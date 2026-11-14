@@ -102,7 +102,7 @@ table.rt{width:100%;border-collapse:collapse;font-size:.85rem}
 
 <script>
 // ===== ตั้งค่า: วาง URL ของ Web App (Apps Script) ที่ Deploy แล้ว =====
-const API_URL = 'https://script.google.com/macros/s/AKfycbyIyPj7r_8KA70bXkiDqh97li4ICvokYHxDyPEuUT99eR583fUhBrQ7pQTxq0ci3_4/exec';
+const API_URL = 'วาง_WEB_APP_URL_ที่นี่';
 // =====================================================================
 let ALL = [], PW = '';
 const $ = id => document.getElementById(id);
@@ -128,7 +128,7 @@ async function load(fromLogin) {
     const d = await api({action: 'data'});
     if (!d.ok) { $('login').style.display = 'block'; $('home').style.display = 'none'; $('lerr').textContent = fromLogin ? (d.error === 'auth' ? 'รหัสผ่านไม่ถูกต้อง' : 'ระบบหลังบ้านผิดพลาด: ' + d.error) : ''; return; }
     try { sessionStorage.setItem('pw', PW); } catch (e) {}
-    ALL = d.items; $('upd').textContent = 'อัปเดตล่าสุด ' + dt(d.updated) + ' · ติดตามข่าวและเนื้อหาสื่อออนไลน์ตามคีย์เวิร์ด';
+    ALL = d.items; $('upd').textContent = 'อัปเดตล่าสุด ' + dt(d.updated) + ' · ติดตามข่าวและเนื้อหาสื่อออนไลน์ตามคีย์เวิร์ด · โค้ดหลังบ้าน ' + (d.version || 'เวอร์ชันเก่า');
     $('login').style.display = 'none'; $('home').style.display = 'block';
     fillSel('fp', 'platform'); fillSel('fg', 'group');
     const cats = [...new Set(ALL.flatMap(x => String(x.cat || '').split(/,\s*/)).filter(Boolean))];
