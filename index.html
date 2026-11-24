@@ -56,6 +56,10 @@ table.rt{width:100%;border-collapse:collapse;font-size:.85rem}
 .rbar{display:flex;gap:8px;margin-bottom:12px}
 #login{max-width:340px;margin:60px auto;background:#fff;padding:22px;border-radius:14px;text-align:center;display:none}
 #login input{width:100%;padding:10px;margin:10px 0;border:1px solid var(--bd);border-radius:8px;font:inherit}
+#legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.lg{border:2px solid;border-radius:99px;padding:4px 12px;font:inherit;font-weight:600;font-size:.85rem;cursor:pointer;background:#fff}
+.lg.on{color:#fff!important}
+.lgl{color:var(--mu);font-size:.8rem;margin-right:4px}
 @media print{
  @page{size:A4 landscape;margin:10mm}
  body{background:#fff}header,main,.rbar,.noprint,#login{display:none!important}
@@ -72,6 +76,7 @@ table.rt{width:100%;border-collapse:collapse;font-size:.85rem}
   <div class="sp"></div>
   <button class="btn" onclick="goHome()">🏠 หน้าหลัก</button>
   <button class="btn" onclick="runNow(this)">🔄 ตรวจหาตอนนี้</button>
+  <button class="btn" style="background:#ffd54f" onclick="askEdit()">✏️ แก้ไขข้อมูล (Sheet)</button>
   <button class="btn p" onclick="showReport()">🖨 รายงาน / พิมพ์</button>
 </div></header>
 
@@ -81,12 +86,13 @@ table.rt{width:100%;border-collapse:collapse;font-size:.85rem}
 
 <main id="home" style="display:none">
   <div class="stats" id="stats"></div>
+  <div id="legend"></div>
   <div class="flt">
     <input type="search" id="q" placeholder="ค้นหาหัวข้อ / คีย์เวิร์ด / แหล่งข่าว" oninput="render()">
     <select id="fp" onchange="render()"><option value="">ทุกแพลตฟอร์ม</option></select>
     <select id="fg" onchange="render()"><option value="">ทุกกลุ่มคีย์เวิร์ด</option></select>
     <select id="fc" onchange="render()"><option value="">ทุกหมวดเหตุการณ์</option></select>
-    <select id="fd" onchange="render()"><option value="1">วันนี้</option><option value="7" selected>7 วันล่าสุด</option><option value="15">15 วัน</option><option value="30">30 วัน</option><option value="0">ทั้งหมด</option></select>
+    <select id="fd" onchange="render()"><option value="1">วันนี้</option><option value="3" selected>3 วันล่าสุด</option><option value="7">7 วัน</option><option value="30">30 วัน</option><option value="0">ทั้งหมด</option></select>
     <select id="fs" onchange="render()"><option value="">ไม่รวมที่ไม่เกี่ยวข้อง</option><option value="ใหม่">เฉพาะใหม่</option><option value="ตรวจสอบแล้ว">ตรวจสอบแล้ว</option><option value="ไม่เกี่ยวข้อง">ไม่เกี่ยวข้อง</option><option value="*">ทั้งหมด</option></select>
     <select id="fo" onchange="render()"><option value="date">เรียงตามเวลา</option><option value="score">เรียงตามคะแนน</option></select>
   </div>
@@ -102,7 +108,7 @@ table.rt{width:100%;border-collapse:collapse;font-size:.85rem}
 
 <script>
 // ===== ตั้งค่า: วาง URL ของ Web App (Apps Script) ที่ Deploy แล้ว =====
-const API_URL = 'https://script.google.com/macros/s/AKfycbzJ9NWjqEyBaecduf_yaF_5uz5jzc7vcPHoOeqvUuWohBOSfhQ0VwofOpN8047oGFex/exec';
+const API_URL = 'วาง_WEB_APP_URL_ที่นี่';
 // =====================================================================
 let ALL = [], PW = '';
 const $ = id => document.getElementById(id);
@@ -111,6 +117,35 @@ const safeUrl = u => /^https?:\/\//i.test(u) ? u : '#';
 const tags = (s, cls) => String(s || '').split(/,\s*/).filter(Boolean).map(t => `<span class="tag ${cls || 'c-' + esc(t)}">${esc(t)}</span>`).join('');
 const catTags = s => String(s || '').split(/,\s*/).filter(Boolean).map(t => `<span class="tag c-${esc(t)}">${esc(t)}</span>`).join('');
 const dt = s => { const d = new Date(String(s).replace(' ', 'T') + '+07:00'); return isNaN(d) ? '' : d.toLocaleString('th-TH', {dateStyle: 'medium', timeStyle: 'short'}); };
+
+const CAT = {'ความรุนแรง': '#c62828', 'ทรัพย์สิน': '#ef6c00', 'ฉ้อโกง/ทุจริต': '#7b1fa2', 'กระแสสังคม': '#0277bd'};
+const PF = {'YouTube': '#e53935', 'ข่าว (Google News)': '#1a73e8', 'Facebook': '#1877f2', 'Instagram': '#c2185b', 'TikTok': '#00897b'};
+const GP = ['#00897b', '#5d4037', '#3949ab', '#d81b60', '#6d4c41', '#2e7d32', '#8e24aa', '#f57c00', '#455a64', '#0097a7'];
+const catColor = c => CAT[String(c || '').split(/,\s*/)[0]] || '#546e7a';
+const pfColor = p => PF[p] || '#607d8b';
+const grpColor = g => { const gs = [...new Set(ALL.map(x => x.group).filter(Boolean))].sort(); const i = gs.indexOf(g); return GP[(i < 0 ? 0 : i) % GP.length]; };
+const evTags = x => String(x.event || '').split(/,\s*/).filter(Boolean).map(t => `<span class="tag" style="background:${catColor(x.cat)}22;color:${catColor(x.cat)}">${esc(t)}</span>`).join('');
+function setF(id, v) { $(id).value = $(id).value === v ? '' : v; render(); }
+function legend() {
+  const cats = Object.keys(CAT), pfs = [...new Set(ALL.map(x => x.platform).filter(Boolean))];
+  $('legend').innerHTML = '<span class="lgl">หมวด:</span>' + cats.map(c => `<button class="lg ${$('fc').value === c ? 'on' : ''}" style="border-color:${CAT[c]};color:${CAT[c]};${$('fc').value === c ? 'background:' + CAT[c] : ''}" onclick="setF('fc','${c}')">${c}</button>`).join('')
+    + '<span class="lgl" style="margin-left:10px">แพลตฟอร์ม:</span>' + pfs.map(p => `<button class="lg ${$('fp').value === p ? 'on' : ''}" style="border-color:${pfColor(p)};color:${pfColor(p)};${$('fp').value === p ? 'background:' + pfColor(p) : ''}" onclick="setF('fp','${esc(p)}')">${esc(p)}</button>`).join('');
+}
+function askEdit() {
+  $('md').innerHTML = `<h2>✏️ เข้าแก้ไขข้อมูลใน Google Sheet</h2><p class="meta">ใส่รหัสผู้ดูแลเพื่อเปิดไฟล์ Google Sheet (คีย์เวิร์ด / คำเหตุการณ์ / ข่าวที่พบ)</p>
+  <input id="ec" type="password" inputmode="numeric" placeholder="รหัสผู้ดูแล" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;font:inherit" onkeydown="if(event.key==='Enter')goEdit()">
+  <p id="eerr" style="color:var(--red)"></p><div class="acts"><button class="btn g" onclick="goEdit()">เปิด Google Sheet</button>
+  <button class="btn" style="border:1px solid var(--bd)" onclick="closeM()">↩ กลับหน้าหลัก</button></div>`;
+  $('ov').classList.add('on'); setTimeout(() => $('ec').focus(), 50);
+}
+async function goEdit() {
+  $('eerr').textContent = 'กำลังตรวจสอบ...';
+  try {
+    const d = await api({action: 'sheet', code: $('ec').value.trim()});
+    if (d.ok) { if (!window.open(d.url, '_blank', 'noopener')) location.href = d.url; closeM(); }
+    else $('eerr').textContent = d.error === 'code' ? 'รหัสไม่ถูกต้อง' : 'ผิดพลาด: ' + d.error;
+  } catch (e) { $('eerr').textContent = 'เชื่อมต่อไม่ได้'; }
+}
 
 function goHome() { closeM(); $('report').style.display = 'none'; $('home').style.display = 'block'; window.scrollTo(0, 0); }
 function closeM() { $('ov').classList.remove('on'); document.body.classList.remove('pm'); }
@@ -155,14 +190,17 @@ function filtered() {
 function render() {
   const r = filtered(), today = new Date().toISOString().slice(0, 10);
   const cnt = f => r.filter(f).length;
-  $('stats').innerHTML = [['ทั้งหมดที่พบ', r.length], ['ใหม่ (ยังไม่ตรวจ)', cnt(x => x.status === 'ใหม่')], ['ความรุนแรง', cnt(x => String(x.cat).includes('ความรุนแรง'))],
-    ['ฉ้อโกง/ทุจริต', cnt(x => String(x.cat).includes('ฉ้อโกง'))], ['กระแสสังคม', cnt(x => String(x.cat).includes('กระแส'))], ['YouTube', cnt(x => x.platform === 'YouTube')]]
-    .map(a => `<div class="st"><b>${a[1]}</b><span>${a[0]}</span></div>`).join('');
-  $('grid').innerHTML = r.length ? r.slice(0, 300).map(x => `<div class="card" onclick="openM('${esc(x.id)}')">
+  legend();
+  $('stats').innerHTML = [['ทั้งหมดที่พบ', r.length, '#1f3a6e'], ['ใหม่ (ยังไม่ตรวจ)', cnt(x => x.status === 'ใหม่'), '#2e7d32'], ['ความรุนแรง', cnt(x => String(x.cat).includes('ความรุนแรง')), CAT['ความรุนแรง']],
+    ['ทรัพย์สิน', cnt(x => String(x.cat).includes('ทรัพย์สิน')), CAT['ทรัพย์สิน']], ['ฉ้อโกง/ทุจริต', cnt(x => String(x.cat).includes('ฉ้อโกง')), CAT['ฉ้อโกง/ทุจริต']],
+    ['กระแสสังคม', cnt(x => String(x.cat).includes('กระแส')), CAT['กระแสสังคม']], ['YouTube', cnt(x => x.platform === 'YouTube'), PF['YouTube']]]
+    .map(a => `<div class="st" style="border-left-color:${a[2]}"><b style="color:${a[2]}">${a[1]}</b><span>${a[0]}</span></div>`).join('')
+
+  $('grid').innerHTML = r.length ? r.slice(0, 300).map(x => `<div class="card" style="border-left:6px solid ${catColor(x.cat)}" onclick="openM('${esc(x.id)}')">
     ${x.img ? `<img loading="lazy" src="${esc(safeUrl(x.img))}" alt="">` : ''}
-    <div class="cb"><div class="meta">${esc(x.platform)} · ${esc(x.source)} · ${dt(x.posted)}</div>
+    <div class="cb"><div class="meta"><span class="tag" style="background:${pfColor(x.platform)};color:#fff">${esc(x.platform)}</span> ${esc(x.source)} · ${dt(x.posted)}</div>
     <h3>${esc(x.title)}</h3>
-    <div><span class="tag kw">🔑 ${esc(x.keyword)}</span>${tags(x.event, 'c-' + esc(String(x.cat).split(',')[0]))}</div>
+    <div><span class="tag" style="background:${grpColor(x.group)};color:#fff">🔑 ${esc(x.keyword)}</span>${evTags(x)}</div>
     <div class="meta" style="display:flex">${esc(x.status)}<span class="sc">คะแนน ${esc(x.score)}</span></div></div></div>`).join('')
     : '<div class="empty" style="grid-column:1/-1">ไม่พบข้อมูลตามเงื่อนไข</div>';
 }
@@ -170,7 +208,7 @@ function openM(id) {
   const x = ALL.find(a => a.id === id); if (!x) return;
   $('md').innerHTML = `${x.img ? `<img src="${esc(safeUrl(x.img))}" alt="">` : ''}
   <h2>${esc(x.title)}</h2><div>${catTags(x.cat)}</div>
-  <table><tr><td>คีย์เวิร์ดที่ตรง</td><td>${esc(x.keyword)} <span class="meta">(${esc(x.group)})</span></td></tr>
+  <table><tr><td>คีย์เวิร์ดที่ตรง</td><td><span class="tag" style="background:${grpColor(x.group)};color:#fff">${esc(x.keyword)}</span> <span class="meta">(${esc(x.group)})</span></td></tr>
   <tr><td>คำเหตุการณ์</td><td>${esc(x.event) || '-'}</td></tr>
   <tr><td>แพลตฟอร์ม</td><td>${esc(x.platform)}</td></tr>
   <tr><td>ผู้โพสต์/แหล่งข่าว</td><td>${esc(x.source)}</td></tr>
